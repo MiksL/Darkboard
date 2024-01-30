@@ -78,6 +78,7 @@ int main(int, char**)
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+    io.ConfigFlags |= ImGuiConfigFlags_EnablePowerSavingMode; // Enable Power Saving Mode
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
@@ -133,17 +134,15 @@ int main(int, char**)
     {
     }
 
-
     // Main loop
+    MSG msg;
+    ZeroMemory(&msg, sizeof(msg));
     bool done = false;
-    // Frame count rendering
-    int counter = 3;
-    ImVec2 lastMousePos = io.MousePos;
     while (!done)
     {
         // Poll and handle messages (inputs, window resize, etc.)
         // See the WndProc() function below for our to dispatch events to the Win32 backend.
-        MSG msg;
+        ImGui_ImplWin32_WaitForEvent(hwnd);
         while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
         {
             ::TranslateMessage(&msg);
