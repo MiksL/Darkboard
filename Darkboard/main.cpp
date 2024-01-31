@@ -1,11 +1,3 @@
-// Dear ImGui: standalone example application for DirectX 11
-
-// Learn about Dear ImGui:
-// - FAQ                  https://dearimgui.com/faq
-// - Getting Started      https://dearimgui.com/getting-started
-// - Documentation        https://dearimgui.com/docs (same as your local docs/ folder).
-// - Introduction, links and more at the top of imgui.cpp
-
 #include "imgui.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
@@ -16,7 +8,6 @@
 #include <cstring>
 #include <algorithm>
 #include <WICTextureLoader.h>
-
 
 // Data
 static ID3D11Device* g_pd3dDevice = nullptr;
@@ -35,11 +26,17 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 // Define a struct for Notes
 struct Note
 {
+    int noteID;
     char title[32];
     char body[256];
     bool isPinned = false;
     bool isEditing = false;
     bool isDeleted = false;
+    bool newlyCreated = false;
+
+    // Coordinates for note position on window
+    float x = 0.f;
+    float y = 0.f;
 };
 
 // Initialize a vector to store notes
@@ -109,17 +106,6 @@ int main(int, char**)
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 0.18f);
 
-    // Create a test note
-    Note testNote;
-    strcpy_s(testNote.title, "Test Note");
-    strcpy_s(testNote.body, "This is a test note.");
-    notes.push_back(testNote);
-
-    Note otherTestNote;
-    strcpy_s(otherTestNote.title, "Other Test Note");
-    strcpy_s(otherTestNote.body, "This is another test note.");
-    notes.push_back(otherTestNote);
-
     ID3D11ShaderResourceView* pinTexture = nullptr;
     ID3D11ShaderResourceView* closeTexture = nullptr;
 
@@ -167,12 +153,51 @@ int main(int, char**)
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
+        // Detect if the mouse was double-clicked on the background (to create a new note)
+        if (ImGui::IsMouseDoubleClicked(0) && !ImGui::IsAnyItemHovered() && !ImGui::IsAnyItemActive())
+        {
+            // Loop through note IDs (short int), check for closest available that is not in the Notes vector
+            for (short int i = 0; i < 256; i++)
+            {
+				bool found = false;
+                for (auto& note : notes)
+                {
+                    if (note.noteID == i)
+                    {
+						found = true;
+						break;
+					}
+				}
+
+                if (!found)
+                {
+                    // Create a new note with the ID
+                    Note note;
+                    note.noteID = i;
+                    strcpy_s(note.title, "New note");
+                    // Note body - vector size
+                    auto vectorSize = notes.size();
+                    strcpy_s(note.body, "Body");
+                    note.newlyCreated = true;
+
+                    // Initial note coordinates correspond to mouse position
+                    note.x = ImGui::GetMousePos().x;
+                    note.y = ImGui::GetMousePos().y;
+
+                    notes.push_back(note);
+					break;
+				}
+			}
+		}
+
         for(auto& note : notes)
         {
             if (note.isDeleted)
             {
                 continue;
             }
+
+            ImGui::SetNextWindowPos(ImVec2(note.x, note.y), ImGuiCond_Once);
 
             // Set the window flags based on the pinned state
             ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoTitleBar;
@@ -183,13 +208,28 @@ int main(int, char**)
             }
 
             ImGui::SetNextWindowSize(ImVec2(250, 200));
-            ImGui::Begin(note.title, 0, windowFlags);
+            ImGui::Begin(std::to_string(note.noteID).c_str(), 0, windowFlags);
 
             // Create a child window for the custom title bar
             ImGui::BeginChild("TitleBar", ImVec2(ImGui::GetWindowWidth(), 20));
 
             // Add the title
-            ImGui::Text("%s", note.title);
+            // Default to title editing upon creation
+            if (note.newlyCreated)
+            {
+                // Set the focus to the title input box
+                ImGui::InputText("##title", note.title, IM_ARRAYSIZE(note.title), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue);
+
+                // Check if we are done editing the title
+                if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter)))
+                {
+                    note.newlyCreated = false;
+                }
+            }
+            else
+            {
+                ImGui::Text("%s", note.title);
+            }
 
             ImGui::SameLine();
 
@@ -198,6 +238,8 @@ int main(int, char**)
             float widthNeeded = buttonSize.x + style.ItemSpacing.x + buttonSize.x;
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - widthNeeded*2 - 5);
 
+
+            // Pin button with a pin status
             if (ImGui::ImageButton((ImTextureID)pinTexture, buttonSize)) 
             {
                 note.isPinned = !note.isPinned;
@@ -216,7 +258,7 @@ int main(int, char**)
             {
                 // When editing, use InputTextMultiline
                 ImVec2 size = ImGui::GetContentRegionAvail(); // Get the size of the available space
-                ImGui::InputTextMultiline("##edit", note.body, IM_ARRAYSIZE(note.body), size);
+                ImGui::InputTextMultiline("##edit", note.body, IM_ARRAYSIZE(note.body), size, ImGuiInputTextFlags_AutoSelectAll);
 
                 if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter)) || 
                 (ImGui::IsMouseClicked(0) && !ImGui::IsItemHovered()))
@@ -225,7 +267,7 @@ int main(int, char**)
                     std::replace(note.body, note.body + strlen(note.body), '\n', ' ');
                     note.isEditing = false;
                 }
-            } 
+            }
             else 
             {
                 // When not editing, use TextWrapped
@@ -239,9 +281,6 @@ int main(int, char**)
 
             ImGui::End();
         }
-
-        // Save last mouse pos
-        ImVec2 lastMousePos = io.MousePos;
 
         // Rendering
         ImGui::Render();
