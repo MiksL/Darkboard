@@ -124,6 +124,7 @@ int main(int, char**)
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
     bool done = false;
+    bool editingNote = false;
     while (!done)
     {
         // Poll and handle messages (inputs, window resize, etc.)
@@ -169,7 +170,7 @@ int main(int, char**)
 					}
 				}
 
-                if (!found)
+                if (!found && !editingNote)
                 {
                     // Create a new note with the ID
                     Note note;
@@ -214,9 +215,9 @@ int main(int, char**)
             ImGui::BeginChild("TitleBar", ImVec2(ImGui::GetWindowWidth(), 20));
 
             // Add the title
-            // Default to title editing upon creation
             if (note.newlyCreated)
             {
+                editingNote = true;
                 // Set the focus to the title input box
                 ImGui::InputText("##title", note.title, IM_ARRAYSIZE(note.title), ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue);
 
@@ -224,6 +225,7 @@ int main(int, char**)
                 if (ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_Enter)))
                 {
                     note.newlyCreated = false;
+                    editingNote = false;
                 }
             }
             else
@@ -292,6 +294,9 @@ int main(int, char**)
         g_pSwapChain->Present(1, 0); // Present with vsync
         //g_pSwapChain->Present(0, 0); // Present without vsync
     }
+
+    // Write vector contents to file before exiting
+
 
     // Cleanup
     ImGui_ImplDX11_Shutdown();
