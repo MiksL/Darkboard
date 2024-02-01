@@ -8,6 +8,7 @@
 #include <cstring>
 #include <algorithm>
 #include <WICTextureLoader.h>
+#include <dwmapi.h>
 
 // Data
 static ID3D11Device* g_pd3dDevice = nullptr;
@@ -53,9 +54,13 @@ int main(int, char**)
 {
     // Create application window
     //ImGui_ImplWin32_EnableDpiAwareness();
-    WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"ImGui Example", nullptr };
+    WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"Darkboard", nullptr };
     ::RegisterClassExW(&wc);
-    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"Dear ImGui DirectX11 Example", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, nullptr, nullptr, wc.hInstance, nullptr);
+    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"Darkboard", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, nullptr, nullptr, wc.hInstance, nullptr);
+
+    // Change title bar color to Windows dark mode
+    BOOL value = TRUE;
+    DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value));
 
     // Initialize Direct3D
     if (!CreateDeviceD3D(hwnd))
@@ -154,6 +159,18 @@ int main(int, char**)
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
+        // User interaction text - we show this before the user has created any notes to guide them to double-click to create a note
+        // Text is shown in the center of the window, being slightly lighter than the background
+        // Have it only show the text - no background, no borders
+        if (notes.empty())
+        {
+			ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x / 2, ImGui::GetIO().DisplaySize.y / 2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
+			ImGui::SetNextWindowSize(ImVec2(250, 100));
+			ImGui::Begin("##help", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoDecoration);
+			ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.f), "Double-click to create a note");
+			ImGui::End();
+		}
+
         // Detect if the mouse was double-clicked on the background (to create a new note)
         if (ImGui::IsMouseDoubleClicked(0) && !ImGui::IsAnyItemHovered() && !ImGui::IsAnyItemActive())
         {
@@ -247,9 +264,9 @@ int main(int, char**)
                 note.isPinned = !note.isPinned;
             }
 
-            // Add a close button to the right of the pin button
+            // Close button that is to the right of the pin button
             ImGui::SameLine();
-            if (ImGui::ImageButton((ImTextureID)closeTexture, buttonSize)) 
+            if (ImGui::ImageButton((ImTextureID)closeTexture, buttonSize) && !editingNote) 
             {
                 note.isDeleted = true;
             }
