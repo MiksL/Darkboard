@@ -9,6 +9,11 @@
 #include <algorithm>
 #include <WICTextureLoader.h>
 #include <dwmapi.h>
+#include "resource.h"
+
+// Define resource IDs from Darkboard.rc
+#define IDB_PNG1 101
+#define IDB_PNG2 102
 
 // Data
 static ID3D11Device* g_pd3dDevice = nullptr;
@@ -115,13 +120,27 @@ int main(int, char**)
     ID3D11ShaderResourceView* pinTexture = nullptr;
     ID3D11ShaderResourceView* closeTexture = nullptr;
 
+    // Load textures from Darkboard.rc 
+    HRSRC closeButton = FindResource(nullptr, MAKEINTRESOURCE(IDB_PNG1), L"PNG");
+    HRSRC pinButton = FindResource(nullptr, MAKEINTRESOURCE(IDB_PNG2), L"PNG");
+
+    HGLOBAL closeResource = LoadResource(nullptr, closeButton);
+    HGLOBAL pinResource = LoadResource(nullptr, pinButton);
+
+    void* closeData = LockResource(closeResource);
+    void* pinData = LockResource(pinResource);
+
+    DWORD closeSize = SizeofResource(nullptr, closeButton);
+    DWORD pinSize = SizeofResource(nullptr, pinButton);
+
+
     // Load your textures using DirectXTK's WICTextureLoader
-    HRESULT hr = DirectX::CreateWICTextureFromFile(g_pd3dDevice, L"images/pin.png", nullptr, &pinTexture);
+    HRESULT hr = DirectX::CreateWICTextureFromMemory(g_pd3dDevice, (const uint8_t*)pinData, pinSize, nullptr, &pinTexture);
     if (FAILED(hr)) 
     {
     }
 
-    hr = DirectX::CreateWICTextureFromFile(g_pd3dDevice, L"images/close.png", nullptr, &closeTexture);
+    hr = DirectX::CreateWICTextureFromMemory(g_pd3dDevice, (const uint8_t*)closeData, closeSize, nullptr, &closeTexture);
     if (FAILED(hr)) 
     {
     }
