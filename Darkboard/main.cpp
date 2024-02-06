@@ -40,6 +40,7 @@ struct Note
     float y = 0.f;
 };
 
+// Input vector from file
 // Initialize a vector to store notes
 std::vector<Note> notes;
 
@@ -164,7 +165,8 @@ int main(int, char**)
         // Have it only show the text - no background, no borders
         if (notes.empty())
         {
-			ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x / 2, ImGui::GetIO().DisplaySize.y / 2), ImGuiCond_Once, ImVec2(0.5f, 0.5f));
+            ImVec2 windowCenter = ImGui::GetMainViewport()->GetCenter();
+			ImGui::SetNextWindowPos(windowCenter, ImGuiCond_None, ImVec2(0.5f, 0.5f));
 			ImGui::SetNextWindowSize(ImVec2(250, 100));
 			ImGui::Begin("##help", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoDecoration);
 			ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.f), "Double-click to create a note");
