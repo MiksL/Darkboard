@@ -9,7 +9,13 @@
 #include <algorithm>
 #include <WICTextureLoader.h>
 #include <dwmapi.h>
+#include <boost/serialization/serialization.hpp>
+#include <boost/archive/text_oarchive.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <fstream>
+
 #include "resource.h"
+#include <iostream>
 
 // Define resource IDs from Darkboard.rc
 #define IDB_PNG1 101
@@ -32,6 +38,20 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 // Define a struct for Notes
 struct Note
 {
+    template<class Archive>
+    void serialize(Archive& ar, const unsigned int version)
+    {
+		ar& noteID;
+		ar& title;
+		ar& body;
+		ar& isPinned;
+		ar& isEditing;
+		ar& isDeleted;
+		ar& newlyCreated;
+		ar& x;
+		ar& y;
+	}
+
     int noteID;
     char title[32];
     char body[256];
@@ -44,10 +64,6 @@ struct Note
     float x = 0.f;
     float y = 0.f;
 };
-
-// Input vector from file
-// Initialize a vector to store notes
-std::vector<Note> notes;
 
 // Global var for note editing state
 /*
@@ -143,6 +159,32 @@ int main(int, char**)
     hr = DirectX::CreateWICTextureFromMemory(g_pd3dDevice, (const uint8_t*)closeData, closeSize, nullptr, &closeTexture);
     if (FAILED(hr)) 
     {
+    }
+
+    // Disable .ini file
+    ImGui::GetIO().IniFilename = nullptr;
+
+    // Initialize a vector to store notes
+    std::vector<Note> notes;
+
+    // Try to deserialize from notes.dat file
+    std::ifstream ifs("notes.dat");
+    if (ifs.is_open())
+    {
+        while (true)
+        {
+			Note note;
+            try
+            {
+				boost::archive::text_iarchive ia(ifs);
+				ia >> note;
+				notes.push_back(note);
+			}
+            catch (boost::archive::archive_exception& e)
+            {
+				break;
+			}
+		}
     }
 
     // Main loop
@@ -319,6 +361,10 @@ int main(int, char**)
                 }
             }
 
+            // Save the note position
+            note.x = ImGui::GetWindowPos().x;
+            note.y = ImGui::GetWindowPos().y;
+
             ImGui::End();
         }
 
@@ -333,8 +379,18 @@ int main(int, char**)
         //g_pSwapChain->Present(0, 0); // Present without vsync
     }
 
-    // Write vector contents to file before exiting
+    std::ofstream ofs("notes.dat");
 
+    for (auto& note : notes)
+    {
+
+        if (!note.isDeleted)
+        {
+            // Serialize the vector and write to file
+            boost::archive::text_oarchive oa(ofs);
+			oa << note;
+		}
+	}
 
     // Cleanup
     ImGui_ImplDX11_Shutdown();

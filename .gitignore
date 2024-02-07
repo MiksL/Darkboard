@@ -362,3 +362,4 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 Darkboard/imgui.ini
+Darkboard/notes.dat
